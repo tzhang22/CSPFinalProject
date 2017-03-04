@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 library("tidyr")
 
 econ.csv <- read.csv("data/ECN_2012_US_52A1.csv", stringsAsFactors = FALSE)

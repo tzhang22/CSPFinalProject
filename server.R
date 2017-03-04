@@ -1,9 +1,14 @@
+<<<<<<< HEAD
 library("httr")
 library("jsonlite")
+=======
+# Load the shiny, ggplot2, and dplyr libraries
+>>>>>>> master
 library("shiny")
 library("ggplot2")
 library("dplyr")
 
+<<<<<<< HEAD
 server <- function(input, output) {
   
   # reactive table that is used in both the table and ggplot
@@ -88,3 +93,8 @@ server <- function(input, output) {
 
 # Makes the server
 shinyServer(server)
+=======
+
+
+shinyServer(my.server)
+>>>>>>> master
