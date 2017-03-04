@@ -6,28 +6,24 @@ library("dplyr")
 
 source("keyFile.R")
 
-print(my.key)
+base.url <- "http://api.musixmatch.com/ws/1.1/tracking.url.get?"
+  
+econ.csv <- read.csv("data/ECN_2012_US_52A1.csv", stringsAsFactors = FALSE)
 
-base.url <- "http://ws.audioscrobbler.com/2.0/"
+econ.table <- data.frame(econ.csv)
 
-reportTopSong <- function(state.name) {
-  country.data <- GET(paste0(base.url, "?method=geo.gettoptracks&country=",
-                             state.name, "&api_key=", my.key, "&format=json"))
-  
-  country.frame <- fromJSON(content(country.data, "text"))
-  
-  country.frame <- data.frame(country.frame, stringsAsFactors = FALSE)
-  
-  country.frame <- flatten(country.frame)
-  
-  top.song <- filter(country.frame, tracks.track.listeners == max(as.numeric(tracks.track.listeners))) %>% 
-              select(tracks.track.listeners, tracks.track.name)
-  
-  return(top.song)
-}
+filtered.econ <- filter(econ.table, NAICS.display.label == "Finance and insurance") %>% 
+            select(GEO.display.label, PAYANN, ESTAB, EMP)
 
-result <- reportTopSong("spain")
-print(result)
+filtered.econ$EMP <- cut(as.numeric(filtered.econ$EMP), breaks <- c(0, 10000,20000,40000,80000,160000,
+                                                       320000,640000))
+
+View(filtered.econ)
+
+ggplot(data = filtered.econ) +
+  geom_point(mapping = aes(x = ESTAB, y = PAYANN, color = EMP), size = 3) +
+  scale_color_brewer(palette = "BuPu")
+  
 
 ui <- fluidPage(
   
