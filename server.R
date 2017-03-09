@@ -1,10 +1,219 @@
-# Load the shiny, ggplot2, and dplyr libraries
+# Load necessary libraries
 library("tidyr")
-library("maps")
 library("shiny")
+library("maps")
 library("ggplot2")
 library("dplyr")
 library("plotly")
+library("shinythemes")
+
+# Tony's Portion
+# Arranging data set column names
+tax.data <- read.csv(file = "data/Taxes_2015.csv", stringsAsFactors = FALSE)
+colnames(tax.data) <- tax.data[1,]
+tax.data <- tax.data[c(2:1582),]
+
+# Filling in missing state id 
+state.id <- read.csv(file = "data/states.csv", stringsAsFactors = FALSE)
+colnames(state.id) <- c("Geographic area name", "state.abbrev")
+tax.data <- full_join(state.id, tax.data, by = "Geographic area name")
+
+# Selecting and changing variable names to be ready for joining.
+selected <- select(tax.data, State = `Geographic area name`, Id = state.abbrev,
+                   `Tax Type` = `Meaning of Tax Type`, `Amount ($1,000)`) %>% 
+    filter(State != "District of Columbia")
+
+# Changing the amount to numbers so they can be graphed
+selected$Amount <- as.numeric(selected$`Amount ($1,000)`) * 1000
+
+# Getting all the unique values for users to select
+tax.types <- unique(selected$`Tax Type`)
+states <- unique(selected$State)
+
+##########################################################
+
+# Rhea's Portion
+income.data <- read.csv("data/Income_Employment_2015.csv", stringsAsFactors = FALSE)
+
+# select total households data set from the whole data set
+total.households <-
+    select(
+        income.data,
+        GEO.display.label,
+        HC01_VC74,
+        HC01_VC75,
+        HC01_VC76,
+        HC01_VC77,
+        HC01_VC78,
+        HC01_VC79,
+        HC01_VC80,
+        HC01_VC81,
+        HC01_VC82,
+        HC01_VC83,
+        HC01_VC84,
+        HC01_VC85,
+        HC01_VC86
+    )
+total.households <- total.households[2:53,]
+
+colnames(total.households) <-
+    c(
+        "Geography",
+        "Total households",
+        "Less than $10,000",
+        "Up to $14,999",
+        "Up to $24,999",
+        "Up to $34,999",
+        "Up to $49,999",
+        "Up to $74,999",
+        "Up to $99,999",
+        "Up to $149,999",
+        "Up to $199,999",
+        "$200,000 or more",
+        "Median household income (dollars)",
+        "Mean household income (dollars)"
+    )
+
+# Filling in missing state id 
+colnames(state.id) <- c("Geography", "state.abbrev")
+total.households <- full_join(state.id, total.households, by = "Geography")
+
+household.long <- gather(total.households, 
+                         key = "Incomes Range", 
+                         value = "Amount", 
+                         `Less than $10,000`,
+                         `Up to $14,999`,
+                         `Up to $24,999`,
+                         `Up to $34,999`,
+                         `Up to $49,999`,
+                         `Up to $74,999`,
+                         `Up to $99,999`,
+                         `Up to $149,999`,
+                         `Up to $199,999`,
+                         `$200,000 or more`
+) %>% 
+    select(Geography, state.abbrev, `Incomes Range`, Amount)
+
+
+# Getting all the unique values for users to select
+incomes.types <- unique(household.long$`Incomes Range`)
+
+# Selecting and changing variable names to be ready for joining.
+household.long <- select(household.long, State = `Geography`, Id = state.abbrev,
+                         `Incomes Range`, Amount) %>% 
+    filter(State != "District of Columbia")
+
+# Changing the amount to numbers so they can be graphed
+household.long$Amount <- as.numeric(household.long$Amount)
+
+##########################################################
+
+# Tim's Portion
+poverty.csv <- read.csv("data/Poverty_2015.csv", stringsAsFactors = FALSE)
+
+poverty.table <- data.frame(poverty.csv)
+
+filtered.poverty <- select(poverty.table, GEO.display.label, HC02_EST_VC01, HC02_MOE_VC01, HC03_EST_VC01, 
+                           HC03_MOE_VC01,  HC02_EST_VC03, HC02_MOE_VC03, HC03_EST_VC03, HC03_MOE_VC03) %>% 
+    filter(GEO.display.label != "Puerto Rico" & GEO.display.label != "Geography")
+
+colnames(filtered.poverty) <- c("State", "Total Poverty", "Error.Total", "Percent Total Poverty", 
+                                "Error.Percent.Total", "Total Poverty (Under 18)", "Error.Under.18",
+                                "Percent Total Poverty (Under 18)", "Error.Percent.Under.18")
+
+filtered.poverty$`Total Poverty` <- as.numeric(filtered.poverty$`Total Poverty`)
+filtered.poverty$Error.Total <- as.numeric(filtered.poverty$Error.Total)
+filtered.poverty$`Percent Total Poverty` <- as.numeric(filtered.poverty$`Percent Total Poverty`)
+filtered.poverty$Error.Percent.Total <- as.numeric(filtered.poverty$Error.Percent.Total)
+filtered.poverty$`Total Poverty (Under 18)` <- as.numeric(filtered.poverty$`Total Poverty (Under 18)`)
+filtered.poverty$Error.Under.18 <- as.numeric(filtered.poverty$Error.Under.18)
+filtered.poverty$`Percent Total Poverty (Under 18)` <- as.numeric(filtered.poverty$`Percent Total Poverty (Under 18)`)
+filtered.poverty$Error.Percent.Under.18 <- as.numeric(filtered.poverty$Error.Percent.Under.18)
+
+# All Regions
+non <- "Not a state"
+
+Northwest <-  c("Alaska", "Washington",
+                "Oregon", "Idaho", "Montana",
+                "Wyoming", non, non, non, non,
+                non, non, non)
+South <- c("Florida", "Mississippi",
+           "Louisiana", "Alabama", "Georgia",
+           "South Carolina", "North Carolina",
+           "Tennessee", "Arkansas", "Kentucky",
+           "Virginia", non, non)
+Northeast <- c("Maine", "New Hampshire",
+               "Vermont", "Massachusetts",
+               "Rhode Island", "Connecticut",
+               "New York", "Pennsylvania", "Delaware",
+               "District of Columbia", "Maryland",
+               "New Jersey", "West Virginia")
+Midwest <- c("Ohio", "Indiana", "Michigan",
+             "Illinois", "Wisconsin",
+             "Missouri", "Iowa", "Minnesota",
+             "Kansas", "Nebraska", "South Dakota",
+             "North Dakota", non)
+Southwest <- c("California", "Hawaii", "Nevada",
+               "Utah", "Colorado",
+               "Arizona", "New Mexico",
+               "Oklahoma", "Texas", non, non, non, non)
+
+regions <- data.frame(Northwest, South, Northeast, Midwest, Southwest)
+
+regions.long <- gather(regions, key = Region, value = State,
+                       Northwest, South, Northeast, Midwest, Southwest)
+
+regions.long <- filter(regions.long, State != "Not a state")
+
+joined.one <- left_join(regions.long, filtered.poverty, by = "State")
+
+the.us <- map_data("state")
+
+joined.one$State <- tolower(joined.one$State)
+
+ultra.join <- left_join(joined.one, the.us, by = c("State" = "region"))
+
+mean.table <- group_by(ultra.join, Region) %>% 
+    summarize("mean.percent" = mean(`Percent Total Poverty`), 
+              "mean.percent.18" = mean(`Percent Total Poverty (Under 18)`))
+
+##########################################################
+
+# Sam's Portion
+filtered.employment <- select(income.data, GEO.display.label,HC03_VC06, HC03_VC07, HC03_VC08) %>% 
+    filter(GEO.display.label != "Puerto Rico" & GEO.display.label != "Geography")
+
+colnames(filtered.employment) <- c("State", "Employed labor force", "Unemployed labor force", "Armed labor force")
+
+
+filtered.employment$`Employed labor force` <- as.numeric(filtered.employment$`Employed labor force`)
+filtered.employment$`Unemployed labor force` <- as.numeric(filtered.employment$`Unemployed labor force`)
+filtered.employment$`Armed labor force` <- as.numeric(filtered.employment$`Armed labor force`)
+
+regions <- data.frame(Northwest, South, Northeast, Midwest, Southwest)
+# Gather different region into one.
+regions.long <- gather(regions, key = Region, value = State,
+                       Northwest, South, Northeast, Midwest, Southwest)
+
+regions.long <- filter(regions.long, State != "Not a state")
+
+# join two data frame into one by state name.
+joined <- left_join(regions.long, filtered.employment, by = "State")
+
+# gather three categories into one columns with value besides it.
+long.join <- gather(joined, "type.of.force", "value", `Employed labor force`,
+                    `Unemployed labor force`, `Armed labor force`)
+
+long.join$State <- tolower(long.join$State)
+
+us.maps <- map_data("state")
+
+joined$State <- tolower(joined$State)
+
+# Join us.maps which has logitude and latitude and long.join into one data frame.
+State.join <- left_join(joined, us.maps, by = c("State" = "region"))
+
+##########################################################
 
 server <- function(input, output) {
     # Tony's Portion
@@ -70,6 +279,51 @@ server <- function(input, output) {
     
     ##########################################################
     
+    # Rhea's Portion
+    filtered.rhea <- reactive({
+        data <- filter(household.long, `Incomes Range` == input$facet.rhea)
+        
+        if (input$state1.rhea != "United States" && input$state2.rhea != "United States") {
+            data <- filter(data, State %in% c(input$state1.rhea, input$state2.rhea))
+        }
+        
+        return (data)
+    })
+    
+    output$incomes.map <- renderPlotly({
+        p <- plot_geo(data = filtered.rhea(), locationmode = 'USA-states') %>%
+            add_trace(z = ~Amount, locations = ~Id,
+                      marker = list(colorbar = list(title = "Num of Households")),
+                      colors = "Greens") %>%
+            layout(
+                title = paste(input$facet.rhea),
+                geo = list(scope = 'usa')
+            )
+        
+        return (p)
+    })
+    
+    output$state.info.rhea <- renderPlotly({
+        if (input$state1.rhea != "United States" && input$state2.rhea != "United States") {
+            choice1 = input$state1.rhea
+            choice2 = input$state2.rhea
+            
+            data1 <- filter(filtered.rhea(), State == choice1 | State == choice2)
+            
+            p <- plot_ly(data = data1, x = ~State, y = ~Amount,
+                         type = 'bar', name = ~State, color = ~State) %>%
+                layout(
+                    showlegend = FALSE,
+                    title = paste(choice1, "vs", choice2, "incomes"),
+                    xaxis = list(title = "Income"),
+                    yaxis = list(title = "Number of Households"))
+        } else {
+            plotly_empty()
+        }
+    })
+    
+    ##########################################################
+    
     # Tim's Portion
     # reactive table that is used in both the table and ggplot
     filtered.map <- reactive({
@@ -126,7 +380,7 @@ server <- function(input, output) {
                 scale_fill_continuous(low = "#F2F2F2", high = "#138A6E")
         }
         
-        p <- p + coord_fixed(ratio = 1.0) +
+        p <- p + coord_fixed(ratio = 1.4) +
             labs(x = "", y = "") +
             theme_minimal() +
             theme(axis.title.x = element_blank(),
@@ -251,14 +505,14 @@ server <- function(input, output) {
     
     output$description1 <- renderText({
         message <- paste0("This graph shows the level of ", input$labor.type," in 2015 in ",input$radio.region, " part. From lightest color to darkest color,
-                          it shows the state which has least percentage of ",input$labor.type, " to state which has largest percentage of ", input$labor.type)
+                          it shows the state which has least percentage of ",input$labor.type, " to state which has largest percentage of ", input$labor.type, ".")
         
         return(message)
     })
     
     output$description2 <- renderText({
         message <- paste0("This bar graph shows the percentage of three categories(Employed labor force,
-                          Unemployed labor force, Armed labor force) in ",input$state)
+                          Unemployed labor force, Armed labor force) in ",input$state, ".")
         
         return(message)
     })
@@ -283,7 +537,15 @@ server <- function(input, output) {
                 scale_fill_continuous(low = "#FFFFFF", high = "#138A6E")
         }
         
-        p <- p + coord_fixed(ratio = 1.0)
+        p <- p + coord_fixed(ratio = 1.4) +
+            labs(x = "", y = "") +
+            theme_minimal() +
+            theme(axis.title.x = element_blank(),
+                  axis.text.x = element_blank(),
+                  axis.ticks.x = element_blank(),
+                  axis.title.y = element_blank(),
+                  axis.text.y = element_blank(),
+                  axis.ticks.y = element_blank())
         
         return(p)
     })
@@ -293,7 +555,9 @@ server <- function(input, output) {
     output$plot2.sam <- renderPlot({
         my.plot <- ggplot(data = filtered.sam()) + 
             geom_bar(mapping = aes(x = type.of.force, y = value, fill = type.of.force),
-                     stat = "identity")
+                     stat = "identity") +
+            labs(x = "Type of Labor Force", y = "Population (%)") +
+            guides(fill = FALSE)
         
         return(my.plot)
     })
