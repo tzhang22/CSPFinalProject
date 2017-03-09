@@ -5,6 +5,8 @@ library("ggplot2")
 library("dplyr")
 library("plotly")
 
+tax.data <- read.csv("data/Taxes_2015.csv", stringsAsFactors = FALSE)
+income.data <- read.csv("data/Income_Employment_2015.csv", stringsAsFactors = FALSE)
 poverty.csv <- read.csv("data/Poverty_2015.csv", stringsAsFactors = FALSE)
 
 poverty.table <- data.frame(poverty.csv)

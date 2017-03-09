@@ -1,6 +1,3 @@
-max.total.pov <- max(filtered.poverty$`Total Poverty`)
-max.total.18.pov <- max(filtered.poverty$`Total Poverty (Under 18)`)
-
 mean.table <- group_by(ultra.join, Region) %>% 
                 summarize("mean.percent" = mean(`Percent Total Poverty`), 
                           "mean.percent.18" = mean(`Percent Total Poverty (Under 18)`))
