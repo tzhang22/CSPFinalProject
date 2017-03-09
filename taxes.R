@@ -19,7 +19,7 @@ selected <- select(tax.data, State = `Geographic area name`, Id = state.abbrev,
     filter(State != "District of Columbia")
 
 # Changing the amount to numbers so they can be graphed
-selected$`Amount ($)` <- as.numeric(selected$`Amount ($1,000)`) * 1000
+selected$Amount <- as.numeric(selected$`Amount ($1,000)`) * 1000
 
 # Getting all the unique values for users to select
 tax.types <- unique(selected$`Tax Type`)
@@ -81,12 +81,12 @@ server <- function(input, output) {
         
         state1 <- selected %>% 
             filter(State == name1, `Tax Type` != "Total Taxes") %>% 
-            mutate(name1 = `Amount ($)`) %>% 
+            mutate(name1 = Amount) %>% 
             select(name1, `Tax Type`)
         
         state2 <- selected %>% 
             filter(State == name2, `Tax Type` != "Total Taxes") %>% 
-            mutate(name2 = `Amount ($)`) %>% 
+            mutate(name2 = Amount) %>% 
             select(name2, `Tax Type`)
         
         data <- left_join(state1, state2)
@@ -96,7 +96,8 @@ server <- function(input, output) {
     
     output$taxes.map <- renderPlotly({
         p <- plot_geo(data = filtered(), locationmode = 'USA-states') %>%
-                add_trace(z = ~`Amount ($)`, locations = ~Id, colors = 'Blues') %>%
+                add_trace(z = ~Amount, locations = ~Id, 
+                          marker = list(colorbar = list(title = "Amount ($)")), colors = 'Blues') %>%
                 layout(
                     title = paste(input$facet, "Across the United States"),
                     geo = list(scope = 'usa')
