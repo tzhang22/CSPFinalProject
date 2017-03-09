@@ -13,6 +13,7 @@ income.data <-
 poverty.data <-
   read.csv("data/Poverty_2015.csv", stringsAsFactors = FALSE)
 
+# select total households data set from the whole data set
 total.households <-
   select(
     income.data,
@@ -38,85 +39,62 @@ colnames(total.households) <-
     "Geography",
     "Total households",
     "Less than $10,000",
-    "$10,000 to $14,999",
-    "$15,000 to $24,999",
-    "$25,000 to $34,999",
-    "$35,000 to $49,999",
-    "$50,000 to $74,999",
-    "$75,000 to $99,999",
-    "$100,000 to $149,999",
-    "$150,000 to $199,999",
+    "Up to $14,999",
+    "Up to $24,999",
+    "Up to $34,999",
+    "Up to $49,999",
+    "Up to $74,999",
+    "Up to $99,999",
+    "Up to $149,999",
+    "Up to $199,999",
     "$200,000 or more",
     "Median household income (dollars)",
     "Mean household income (dollars)"
   )
 
+# Filling in missing state id 
+state.id <- read.csv(file = "data/states.csv", stringsAsFactors = FALSE)
+colnames(state.id) <- c("Geography", "state.abbrev")
+total.households <- full_join(state.id, total.households, by = "Geography")
+
 household.long <- gather(total.households, 
                          key = "Incomes Range", 
                          value = "Amount", 
                          `Less than $10,000`,
-                         `$10,000 to $14,999`,
-                         `$15,000 to $24,999`,
-                         `$25,000 to $34,999`,
-                         `$35,000 to $49,999`,
-                         `$50,000 to $74,999`,
-                         `$75,000 to $99,999`,
-                         `$100,000 to $149,999`,
-                         `$150,000 to $199,999`,
+                         `Up to $14,999`,
+                         `Up to $24,999`,
+                         `Up to $34,999`,
+                         `Up to $49,999`,
+                         `Up to $74,999`,
+                         `Up to $99,999`,
+                         `Up to $149,999`,
+                         `Up to $199,999`,
                          `$200,000 or more`
                          ) %>% 
-                   select(Geography, `Incomes Range`, Amount)
-
-with.others <-
-  select(
-    income.data,
-    GEO.display.label,
-    HC01_VC89,
-    HC01_VC90,
-    HC01_VC91,
-    HC01_VC92,
-    HC01_VC93,
-    HC01_VC94,
-    HC01_VC97,
-    HC01_VC98,
-    HC01_VC99,
-    HC01_VC100,
-    HC01_VC101
-  )
-with.others <- with.others[2:53,]
-
-colnames(with.others) <-
-  c(
-    "Geography",
-    "With earnings",
-    "Mean earnings (dollars)",
-    "With Social Security",
-    "Mean Social Security income (dollars)",
-    "With retirement income",
-    "Mean retirement income (dollars)",
-    "With Supplemental Security Income",
-    "Mean Supplemental Security Income (dollars)",
-    "With cash public assistance income",
-    "Mean cash public assistance income (dollars)",
-    "With Food Stamp/SNAP benefits in the past 12 months"
-  )
-
+                   select(Geography, state.abbrev, `Incomes Range`, Amount)
 
 
 # Getting all the unique values for users to select
-incomes.types <- household.long$`Incomes Range`
-states <- household.long$Geography
+incomes.types <- unique(household.long$`Incomes Range`)
+states <- unique(household.long$Geography)
 
+
+# Selecting and changing variable names to be ready for joining.
+household.long <- select(household.long, State = `Geography`, Id = state.abbrev,
+                   `Incomes Range`, Amount) %>% 
+  filter(State != "District of Columbia")
+
+# Changing the amount to numbers so they can be graphed
 household.long$Amount <- as.numeric(household.long$Amount)
 
+# Define a shiny ui
 ui <- fluidPage(theme = shinytheme("journal"),
   navbarPage(title = "United States Economics",
              tabPanel(title = "Incomes",
                       sidebarLayout(
                         sidebarPanel(
                           selectInput('facet', label = "Incomes Range", 
-                                      choices = household.long$`Incomes Range`,
-                                      selected = "Less than $10,000"),
+                                      choices = incomes.types),
                           selectInput('state1', label = "Choose a state to compare to",
                                       choices = c("United States", states)),
                           selectInput('state2', label = "Choose a state to compare against",
@@ -132,12 +110,13 @@ ui <- fluidPage(theme = shinytheme("journal"),
   )
 )
 
+# Define a server
 server <- function(input, output) {
   filtered <- reactive({
     data <- filter(household.long, `Incomes Range` == input$facet)
     
     if (input$state1 != "United States" && input$state2 != "United States") {
-      data <- filter(data, Geography == input$state1 || Geography == input$state2)
+      data <- filter(data, State %in% c(input$state1, input$state2))
     }
     
     return (data)
@@ -147,15 +126,11 @@ server <- function(input, output) {
     choice1 = input$state1
     choice2 = input$state2
     
-    state1 <- household.long %>% 
-      filter(State ==  choice1, input$facet != "Total Households") %>% 
-      mutate(choice1 = Amount) %>% 
-      select(choice1, `Incomes Range`, Amount)
+    state1 <- filtered() %>% 
+      filter(State == choice1)
     
-    state2 <- household.long %>% 
-      filter(State == choice2, input$facet != "Total Households") %>% 
-      mutate(choice2 = Amount) %>% 
-      select(choice2, `Incomes Range`, Amount)
+    state2 <- filtered() %>% 
+      filter(State == choice2)
     
     data <- left_join(state1, state2)
     
@@ -164,8 +139,7 @@ server <- function(input, output) {
   
   output$incomes.map <- renderPlotly({
     p <- plot_geo(data = filtered(), locationmode = 'USA-states') %>%
-      add_trace(z = ~Amount, locations = ~Geography,
-                color = ~Amount, colors = "Blues") %>%
+      add_trace(z = ~Amount, locations = ~Id, colors = "Blues") %>%
       layout(
         title = paste(input$facet),
         geo = list(scope = 'usa')
@@ -179,14 +153,14 @@ server <- function(input, output) {
       choice1 = input$state1
       choice2 = input$state2
       
-      p <- plot_ly(data = states(), x = ~`Incomes Range`, y = ~choice1,
-                   type = 'bar', name = choice1) %>%
-        add_trace(y = ~choice2, name = choice2) %>%
+      data1 <- filter(filtered(), State == choice1 | State == choice2)
+      
+      p <- plot_ly(data = data1, x = ~State, y = ~Amount,
+                   type = 'bar', name = ~State) %>%
         layout(
           title = paste(choice1, "vs", choice2, "incomes"),
           xaxis = list(title = "Incomes Range (Hover for more details)", showticklabels = FALSE),
-          yaxis = list(title = "Amount ($)"),
-          barmode = 'group')
+          yaxis = list(title = "Amount ($)"))
     } else {
       plotly_empty()
     }
