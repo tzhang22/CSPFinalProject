@@ -2,25 +2,11 @@
 
 ## About Dataset
 
-Our project works with the “____” data set of information created and maintained by the US Government. The data set we used in our investigation is a collection containing a summary for _________.
+Our project works with four US Economic-related data sets, created and maintained by the US Government. 
 
 ## Our Investigation
 
-As part of our investigation of this data we compare the
-
-
-## Through this investigation of ours we want to help:
-
--
-
--
-
--
-
--
-
-# Economic Relation Between States
-
+As part of our investigation of this data we compare the Poverty, Taxes, Income, and Employment metrics for each state.
 
 ## About Our Analysis
 
