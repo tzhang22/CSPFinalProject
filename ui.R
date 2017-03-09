@@ -1,10 +1,11 @@
-# Load the shiny, ggplot2, and dplyr libraries
+# Load necessary libraries
 library("tidyr")
-library("maps")
 library("shiny")
+library("maps")
 library("ggplot2")
 library("dplyr")
 library("plotly")
+library("shinythemes")
 
 # Tony's Portion
 # Arranging data set column names
@@ -29,6 +30,83 @@ selected$Amount <- as.numeric(selected$`Amount ($1,000)`) * 1000
 tax.types <- unique(selected$`Tax Type`)
 states <- unique(selected$State)
 
+##########################################################
+
+# Rhea's Portion
+income.data <- read.csv("data/Income_Employment_2015.csv", stringsAsFactors = FALSE)
+
+# select total households data set from the whole data set
+total.households <-
+    select(
+        income.data,
+        GEO.display.label,
+        HC01_VC74,
+        HC01_VC75,
+        HC01_VC76,
+        HC01_VC77,
+        HC01_VC78,
+        HC01_VC79,
+        HC01_VC80,
+        HC01_VC81,
+        HC01_VC82,
+        HC01_VC83,
+        HC01_VC84,
+        HC01_VC85,
+        HC01_VC86
+    )
+total.households <- total.households[2:53,]
+
+colnames(total.households) <-
+    c(
+        "Geography",
+        "Total households",
+        "Less than $10,000",
+        "Up to $14,999",
+        "Up to $24,999",
+        "Up to $34,999",
+        "Up to $49,999",
+        "Up to $74,999",
+        "Up to $99,999",
+        "Up to $149,999",
+        "Up to $199,999",
+        "$200,000 or more",
+        "Median household income (dollars)",
+        "Mean household income (dollars)"
+    )
+
+# Filling in missing state id 
+colnames(state.id) <- c("Geography", "state.abbrev")
+total.households <- full_join(state.id, total.households, by = "Geography")
+
+household.long <- gather(total.households, 
+                         key = "Incomes Range", 
+                         value = "Amount", 
+                         `Less than $10,000`,
+                         `Up to $14,999`,
+                         `Up to $24,999`,
+                         `Up to $34,999`,
+                         `Up to $49,999`,
+                         `Up to $74,999`,
+                         `Up to $99,999`,
+                         `Up to $149,999`,
+                         `Up to $199,999`,
+                         `$200,000 or more`
+) %>% 
+    select(Geography, state.abbrev, `Incomes Range`, Amount)
+
+
+# Getting all the unique values for users to select
+incomes.types <- unique(household.long$`Incomes Range`)
+
+# Selecting and changing variable names to be ready for joining.
+household.long <- select(household.long, State = `Geography`, Id = state.abbrev,
+                         `Incomes Range`, Amount) %>% 
+    filter(State != "District of Columbia")
+
+# Changing the amount to numbers so they can be graphed
+household.long$Amount <- as.numeric(household.long$Amount)
+
+##########################################################
 
 # Tim's Portion
 poverty.csv <- read.csv("data/Poverty_2015.csv", stringsAsFactors = FALSE)
@@ -99,9 +177,9 @@ mean.table <- group_by(ultra.join, Region) %>%
     summarize("mean.percent" = mean(`Percent Total Poverty`), 
               "mean.percent.18" = mean(`Percent Total Poverty (Under 18)`))
 
-# Sam's Portion
-income.data <- read.csv("data/Income_Employment_2015.csv", stringsAsFactors = FALSE)
+##########################################################
 
+# Sam's Portion
 filtered.employment <- select(income.data, GEO.display.label,HC03_VC06, HC03_VC07, HC03_VC08) %>% 
   filter(GEO.display.label != "Puerto Rico" & GEO.display.label != "Geography")
 
@@ -135,16 +213,47 @@ joined$State <- tolower(joined$State)
 # Join us.maps which has logitude and latitude and long.join into one data frame.
 State.join <- left_join(joined, us.maps, by = c("State" = "region"))
 
-
-
+##########################################################
 
 ui <- fluidPage(
+    theme = shinytheme("yeti"),
     navbarPage(
         title = "United States Economics (2015)",
         tabPanel(
             title = "About",
             mainPanel(
-                p("Hello")
+                h1("United States Economic Prosperity in 2015"),
+                h4("This in-depth analysis covers the wealth and prosperity of the United States
+                   in 2015. Our goal with this project was to allow users to quickly look at
+                   visualizations of the US, and then come to conclusions about the difference
+                   between states. One aspect our project is especially good at is comparing two states.
+                   This could be helpful if a user is looking to move to a new state, and they want
+                   to see what certain key statistics are for that state. There are four main topics
+                   that we covered in this project: Taxes, Employment, Income, and Poverty Rates."),
+                h3("Taxes"),
+                h5("The taxes data set contains many different types of taxes (for example: Sales Tax,
+                  Property Tax, Motor Fuels Tax), and graphs how certain states compare with each other
+                  in relation to these taxes. This tab also has a feature that compares two states directly,
+                  lining up a comparison based on the tax of the user’s choice."),
+                h3("Employment"),
+                h5("This data set offers employment data for all 50 states across many different demographics.
+                  The graph featured in this section has the ability to break the United States into five regions,
+                  in order to get a clearer picture of how a certain state compares to the states nearby."),
+                h3("Income"),
+                h5("The United States Income data for 2015 had such statistics as: Average Income per Household,
+                  Average Income per Person, and the Amount of People in a State who had an Income of over $200,000.
+                  This data was graphed by use of a country map, plotting the density of the population who were in
+                  a selected income bracket for each state. If two specific states are selected, it shows a
+                  side-by-side comparison of the two states and the amount of people in the state within the
+                  selected bracket."),
+                h3("Poverty Rates"),
+                h5("This data set had four main measurements for every state: Total Population under the Poverty Line,
+                  Percentage of Population under the Poverty Line, Total Population under 18 below the Poverty Line,
+                  and Percentage of Population under 18 below the Poverty line. These 4 metrics are graphed in the
+                  main graph, which shows the density of the selected statistic on a United States map. There is
+                  also an option to compare two states in relation to one of the above statistics. Lastly, there
+                  is an option to compare Poverty across the different regions of the United States, and see a
+                  breakdown of the states within the selected region.")
                 )
             ),
         tabPanel(
@@ -288,10 +397,32 @@ ui <- fluidPage(
                                 selected = "Alabama")
                     ),
                 mainPanel(
-                    textOutput("description1"),
                     plotOutput("plot1.sam"),
-                    textOutput("description2"),
-                    plotOutput("plot2.sam")
+                    textOutput("description1"),
+                    br(),
+                    br(),
+                    plotOutput("plot2.sam"),
+                    textOutput("description2")
+                    )
+                )
+            ),
+        tabPanel(
+            title = "Income",
+            sidebarLayout(
+                sidebarPanel(
+                    selectInput('facet.rhea', label = "Incomes Range",
+                                choices = incomes.types),
+                    selectInput('state1.rhea', label = "Choose a state to compare to",
+                                choices = c("United States", states)),
+                    selectInput('state2.rhea', label = "Choose a state to compare against",
+                                choices = c("United States", states)),
+                    p("This graph shows the Population of People per State that are in the
+                             selected Income Bracket. If two states are chosen, an additional
+                      graph will appear contrasting the two states' bracket population directly.")
+                    ),
+                mainPanel(
+                    plotlyOutput('incomes.map'),
+                    plotlyOutput('state.info.rhea')
                     )
                 )
             )

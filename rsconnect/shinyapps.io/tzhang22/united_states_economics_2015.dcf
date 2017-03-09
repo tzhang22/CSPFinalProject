@@ -1,0 +1,11 @@
+name: united_states_economics_2015
+title: United States Economics (2015)
+account: tzhang22
+server: shinyapps.io
+appId: 162416
+bundleId: 739888
+url: https://tzhang22.shinyapps.io/united_states_economics_2015/
+when: 1489059186.17765
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: .RData|Income.R|README.md|taxes.R|data/.DS_Store|data/aff_download_readme.txt
