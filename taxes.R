@@ -19,7 +19,7 @@ selected <- select(tax.data, State = `Geographic area name`, Id = state.abbrev,
     filter(State != "District of Columbia")
 
 # Changing the amount to numbers so they can be graphed
-selected$Amount <- as.numeric(selected$`Amount ($1,000)`) * 1000
+selected$`Amount ($)` <- as.numeric(selected$`Amount ($1,000)`) * 1000
 
 # Getting all the unique values for users to select
 tax.types <- unique(selected$`Tax Type`)
@@ -27,7 +27,14 @@ states <- unique(selected$State)
 
 
 ui <- fluidPage(
-    navbarPage(title = "United States Economics",
+    navbarPage(
+        title = "United States Economics (2015)",
+        tabPanel(title = "About",
+            mainPanel(
+                p("Hello")
+            )
+        ),
+        
         tabPanel(title = "Taxes",
             sidebarLayout(
                 sidebarPanel(
@@ -35,7 +42,15 @@ ui <- fluidPage(
                     selectInput('state1', label = "Choose a state to compare to",
                                 choices = c("United States", states)),
                     selectInput('state2', label = "Choose a state to compare against",
-                                choices = c("United States", states))
+                                choices = c("United States", states)),
+                    br(),
+                    p("The above widget examines the different tax data gathered in 2015. 
+                      The first selection drop down allows the specification for different
+                      tax types and how the amounts differ throughout the United States as
+                      a heatmap. Hover over individual states to view more specific dollar
+                      amounts. While the second and third selections allow you to pick two
+                      states to compare in more detail in a grouped bar chart. Hover over
+                      the different bars to display more accurate numerical data.")
                 ),
                 
                 mainPanel(
@@ -66,12 +81,12 @@ server <- function(input, output) {
         
         state1 <- selected %>% 
             filter(State == name1, `Tax Type` != "Total Taxes") %>% 
-            mutate(name1 = Amount) %>% 
+            mutate(name1 = `Amount ($)`) %>% 
             select(name1, `Tax Type`)
         
         state2 <- selected %>% 
             filter(State == name2, `Tax Type` != "Total Taxes") %>% 
-            mutate(name2 = Amount) %>% 
+            mutate(name2 = `Amount ($)`) %>% 
             select(name2, `Tax Type`)
         
         data <- left_join(state1, state2)
@@ -81,7 +96,7 @@ server <- function(input, output) {
     
     output$taxes.map <- renderPlotly({
         p <- plot_geo(data = filtered(), locationmode = 'USA-states') %>%
-                add_trace(z = ~Amount, locations = ~Id, colors = 'Blues') %>%
+                add_trace(z = ~`Amount ($)`, locations = ~Id, colors = 'Blues') %>%
                 layout(
                     title = paste(input$facet, "Across the United States"),
                     geo = list(scope = 'usa')
